@@ -8,34 +8,77 @@ const __dirname = path.dirname(__filename);
 
 // set up the output object
 let seaIceJSON = {};
-for (let i = 1973; i <= 2025; i++) {
+
+let firstYear = 1973;
+let lastYear = 2025;
+
+for (let i = firstYear; i <= lastYear; i++) {
   seaIceJSON[i] = [];
 }
 
-// get the individual month files and store
+// // get the individual month files and store
 for (let i = 1; i <= 12; i++) {
-  let paddedIndex = i.toString().padStart(2, "0");
-  let inputFileName = `tab_extent_mittel_${paddedIndex}_s.txt`;
+  let monthKey = i.toString().padStart(2, "0");
+  let inputFileName = `tab_extent_mittel_${monthKey}_s.txt`;
   let inputFile = readFileSync(`${__dirname}/data/${inputFileName}`, "utf8");
   let cleanedInputFile = inputFile.replace(/;[\s]?/g, " ");
   d3.tsvParseRows(cleanedInputFile, (line) => {
     let splitLine = line[0].split(" ");
-    seaIceJSON[splitLine[0]][i - 1] = splitLine[1];
+    let yearIndex = splitLine[0];
+    seaIceJSON[yearIndex].push({
+      month: i,
+      extent: +splitLine[1],
+    });
   });
 }
 
-/// process the big file data. 1973-1978 not covered in monthly files.
+// process the big file data. 1973-1978 not covered in monthly files.
 let meanInputFile = readFileSync(
   `${__dirname}/data/extent_s_month_mean.txt`,
   "utf8",
 );
+
 d3.tsvParseRows(meanInputFile, (line) => {
-  let paddedMonthKey = line[1].padStart(2, "0");
-  if (!seaIceJSON[line[0]][paddedMonthKey - 1]) {
-    seaIceJSON[line[0]][paddedMonthKey - 1] = line[2];
+  if (!seaIceJSON[line[0]][+line[1]]) {
+    seaIceJSON[line[0]].push({ month: +line[1], extent: +line[2] });
   }
 });
 
+// calculate means by month
+let meanByMonth = {};
+
+Object.entries(seaIceJSON).forEach(([year, values]) => {
+  values.forEach((d) => {
+    let month = d.month;
+    if (!meanByMonth[month]) {
+      meanByMonth[month] = {
+        mean: 0,
+        count: 0,
+        total: 0,
+      };
+    }
+    meanByMonth[month].count += 1;
+    meanByMonth[month].total += d.extent;
+  });
+});
+
+Object.entries(seaIceJSON).forEach(([month, values]) => {
+  values.forEach((d) => {
+    let month = d.month;
+    meanByMonth[month].mean =
+      meanByMonth[month].total / meanByMonth[month].count;
+  });
+});
+
+// add difference from mean data to the JSON
+Object.entries(seaIceJSON).forEach(([year, values]) => {
+  values.forEach((d) => {
+    let month = d.month;
+    d.devFromMean = d.extent - meanByMonth[month].mean;
+  });
+});
+
+// write out the processed JSON file
 let outputFile = "SeaIceExtentProcessed.json";
 let fileContents = JSON.stringify(seaIceJSON);
 
