@@ -1,6 +1,11 @@
 import * as Plot from "@observablehq/plot";
 import fs from "node:fs";
 import { JSDOM } from "jsdom";
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // virtual DOM
 const dom = new JSDOM(`<!DOCTYPE html><body></body>`);
@@ -81,8 +86,9 @@ let plot = Plot.plot({
 });
 
 const svgString = plot.outerHTML;
+fs.mkdirSync(`${__dirname}/svg`, { recursive: true });
 fs.writeFileSync(
-  `outputPlot${options.monochrome ? "-mono" : "-" + options.colorScheme}.svg`,
+  `svg/outputPlot${options.monochrome ? "-mono" : "-" + options.colorScheme}.svg`,
   svgString,
   "utf-8",
 );
@@ -124,7 +130,7 @@ let devFromMeanPlot = Plot.plot({
 
 const svgStringDevFromMean = devFromMeanPlot.outerHTML;
 fs.writeFileSync(
-  `devFromMeanOutputPlot${options.monochrome ? "-mono" : "-" + options.colorScheme}.svg`,
+  `svg/devFromMeanOutputPlot${options.monochrome ? "-mono" : "-" + options.colorScheme}.svg`,
   svgStringDevFromMean,
   "utf-8",
 );
